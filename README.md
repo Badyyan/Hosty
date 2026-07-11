@@ -20,7 +20,8 @@ a REST API, a CLI and a Chrome extension.
 | Feedback | Visitor comments with highlights, threads, resolve workflow |
 | Editing | CodeMirror editor (HTML/CSS/JS/Markdown) with live preview, auto-save, versioned deployments and one-click rollback |
 | Teams | Organizations, invitations, roles (owner/admin/editor/viewer), activity log, notifications |
-| Developer | REST API v1 with scoped API keys, webhooks (HMAC-signed), CLI (`packages/cli`), Chrome extension (`extension/`), GitHub Actions deploy recipe |
+| Developer | REST API v1 with scoped API keys, GraphQL API, JS SDK (`packages/sdk`), webhooks (HMAC-signed), CLI (`packages/cli`), Chrome extension (`extension/`), GitHub Actions deploy recipe |
+| Operations | Daily maintenance endpoint (`/api/cron/daily`): per-plan analytics retention, storage reconciliation, retention pruning after downgrades, token/invite cleanup |
 | Billing | Stripe subscriptions (Free / Pro / Business), plan quotas enforced at upload time, customer portal |
 
 ## Repository layout

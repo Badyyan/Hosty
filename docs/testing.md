@@ -5,7 +5,7 @@
 | Layer | Tooling | What to cover |
 | --- | --- | --- |
 | Unit | Vitest (`npm test`) | Pure logic: slugs, plans/quotas, zip safety, MIME allow-list, HMAC cookies, rate-limit math. See `src/lib/__tests__/` |
-| E2E | Playwright (`npm run test:e2e`) | Real browser + real stack: registration/login, zip upload → subdomain serving (beacon, MIME, clean URLs, 404), paste-HTML, analytics beacon → dashboard, password gate lifecycle (wrong/right/rotation), email gate → lead in dashboard, editor auto-save → v2 → rollback, API keys UI → public API v1 deploy/update/delete. See `tests/e2e/` |
+| E2E | Playwright (`npm run test:e2e`) | Real browser + real stack: registration/login, zip upload → subdomain serving (beacon, MIME, clean URLs, 404), paste-HTML, analytics beacon → dashboard, password gate lifecycle (wrong/right/rotation), email gate → lead in dashboard, editor auto-save → v2 → rollback, API keys UI → public API v1 deploy/update/delete, SDK lifecycle, GraphQL auth/scopes, signed Stripe webhook plan changes, cron maintenance (retention purge + storage reconciliation). See `tests/e2e/` |
 | Load | k6 | Serving path (`GET /sites/:slug/*`) target: p99 < 80 ms from origin, cache-hit ratio > 95% at edge |
 | Security | `npm audit` in CI, ZAP baseline scan against staging | Headers, auth bypass, IDOR on project routes |
 

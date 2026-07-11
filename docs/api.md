@@ -55,6 +55,28 @@ curl -X POST https://hosty.site/api/v1/projects \
 }
 ```
 
+### GraphQL
+
+`POST /api/graphql` — same API-key auth, read-heavy companion to REST
+(deploys stay on REST; multipart uploads don't belong in GraphQL). One round
+trip for account + projects + nested analytics + leads:
+
+```bash
+curl -X POST https://hosty.site/api/graphql \
+  -H "Authorization: Bearer $HOSTY_API_KEY" -H "Content-Type: application/json" \
+  -d '{"query":"{ me { email plan } projects { name url analytics(days: 7) { visitors pageViews } } }"}'
+```
+
+Queries: `me`, `projects(search, limit)`, `project(id)` (with `files`,
+`analytics(days)`, `leads`). Mutations (require the `write` scope):
+`deleteProject(id)`, `setProjectName(id, name)`.
+
+### SDK
+
+[`@hosty/sdk`](../packages/sdk/README.md) wraps REST v1 + GraphQL with zero
+dependencies: `me`, `listProjects`, `getProject`, `deploy`, `update`,
+`deleteProject`, `analytics`, `graphql`.
+
 ### Webhooks
 
 Configure endpoints in **Dashboard → Settings → Webhooks**. Events:
@@ -83,3 +105,4 @@ are visible in the dashboard.
 | Webhooks | `GET/POST/DELETE /api/webhooks[/:id]` |
 | Billing | `POST /api/billing/checkout`, `POST /api/billing/portal`, `POST /api/stripe/webhook` (Stripe-signed) |
 | Public ingest | `POST /_hosty/event` (beacon), `POST /_hosty/lead`, `GET/POST /_hosty/comments`, `POST /_hosty/unlock` (password gate) — these run on hosted-site origins |
+| Maintenance | `POST /api/cron/daily` (Bearer `CRON_SECRET`) — analytics retention per plan, storage-counter reconciliation, deployment retention after downgrades, expired token/invite cleanup. Schedule daily via EventBridge/Cloud Scheduler/crontab |

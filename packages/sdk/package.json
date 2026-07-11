@@ -1,0 +1,13 @@
+{
+  "name": "@hosty/sdk",
+  "version": "1.0.0",
+  "description": "Official JavaScript/TypeScript SDK for the Hosty static hosting API.",
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": { "types": "./index.d.ts", "default": "./index.js" }
+  },
+  "engines": { "node": ">=18.17.0" },
+  "keywords": ["hosty", "static hosting", "deploy", "sdk"]
+}
