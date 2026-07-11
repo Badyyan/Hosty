@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
+/* Data-viz roles (validated reference palette — see docs & dataviz method).
+   Light/dark values swap here; chart code only references roles. */
+.viz-root {
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid-hairline: #e1e0d9;
+  --axis-baseline: #c3c2b7;
+  --series-1: #2a78d6; /* visitors */
+  --series-2: #1baf7a; /* page views */
+  --delta-good: #006300;
+}
+.dark .viz-root {
+  --surface-1: #1a1a19;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid-hairline: #2c2c2a;
+  --axis-baseline: #383835;
+  --series-1: #3987e5;
+  --series-2: #199e70;
+  --delta-good: #0ca30c;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased dark:bg-[#0b0e14] dark:text-slate-100;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-[#121722];
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600;
+  }
+  .btn-secondary {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-800;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .input {
+    @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+}

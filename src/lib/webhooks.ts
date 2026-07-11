@@ -71,6 +71,13 @@ async function deliver(
   }
 
   await db.webhookDelivery.create({
-    data: { endpointId, event, payload, statusCode, error, attempts },
+    data: {
+      endpointId,
+      event,
+      payload: JSON.parse(body), // round-trip guarantees a Prisma-safe JSON value
+      statusCode,
+      error,
+      attempts,
+    },
   });
 }
