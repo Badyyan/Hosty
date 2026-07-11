@@ -1,0 +1,453 @@
+// Hosty database schema.
+// See docs/database.md for modeling rationale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth & accounts
+// ---------------------------------------------------------------------------
+
+model User {
+  id               String    @id @default(cuid())
+  name             String?
+  email            String    @unique
+  emailVerified    DateTime?
+  image            String?
+  passwordHash     String?
+  twoFactorEnabled Boolean   @default(false)
+  twoFactorSecret  String? // encrypted at rest (AES-256-GCM, SIGNING_SECRET-derived key)
+  recoveryCodes    String[] // sha256 hashes, single-use
+  storageUsed      BigInt    @default(0) // bytes, reconciled nightly
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  projects         Project[]
+  teamMemberships  TeamMember[]
+  apiKeys          ApiKey[]
+  subscription     Subscription?
+  webhookEndpoints WebhookEndpoint[]
+  activityLogs     ActivityLog[]
+  notifications    Notification[]
+  passwordResets   PasswordResetToken[]
+  domains          CustomDomain[]
+  integrations     EmailIntegration[]
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique // sha256 of the emailed token
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Teams & collaboration
+// ---------------------------------------------------------------------------
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      TeamMember[]
+  invites      TeamInvite[]
+  projects     Project[]
+  activityLogs ActivityLog[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      TeamRole @default(EDITOR)
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model TeamInvite {
+  id        String   @id @default(cuid())
+  teamId    String
+  email     String
+  role      TeamRole @default(EDITOR)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([email])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  teamId    String?
+  userId    String?
+  action    String // e.g. "project.deployed"
+  targetId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  team Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([teamId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String // "invite" | "comment" | "lead" | "billing" | ...
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+// ---------------------------------------------------------------------------
+// Projects, deployments, files
+// ---------------------------------------------------------------------------
+
+enum ProjectType {
+  SITE      // extracted zip / multi-file site
+  HTML      // single html file
+  PDF
+  IMAGE
+  DOCUMENT  // office docs & other single files
+}
+
+model Project {
+  id                 String      @id @default(cuid())
+  slug               String      @unique // subdomain: {slug}.hosty.site
+  name               String
+  type               ProjectType @default(SITE)
+  userId             String?
+  teamId             String?
+  activeDeploymentId String?     @unique
+
+  // gates & options
+  passwordHash    String? // bcrypt of site password
+  passwordVersion Int     @default(0) // bump to invalidate unlock cookies
+  emailGate       Boolean @default(false)
+  feedbackEnabled Boolean @default(false)
+  pdfDownloadable Boolean @default(true)
+  removeBranding  Boolean @default(false)
+  spaFallback     Boolean @default(false) // serve index.html on 404 (SPA mode)
+
+  seoTitle       String?
+  seoDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user             User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team             Team?            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  activeDeployment Deployment?      @relation("ActiveDeployment", fields: [activeDeploymentId], references: [id])
+  deployments      Deployment[]
+  analyticsEvents  AnalyticsEvent[]
+  leads            Lead[]
+  comments         Comment[]
+  shortLinks       ShortLink[]
+  customDomains    CustomDomain[]
+
+  @@index([userId, updatedAt])
+  @@index([teamId, updatedAt])
+}
+
+model Deployment {
+  id         String   @id @default(cuid())
+  projectId  String
+  version    Int // monotonically increasing per project
+  totalBytes BigInt   @default(0)
+  fileCount  Int      @default(0)
+  source     String   @default("upload") // upload | editor | api | cli | extension | rollback
+  createdAt  DateTime @default(now())
+
+  project         Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activeOf        Project?      @relation("ActiveDeployment")
+  files           ProjectFile[]
+
+  @@unique([projectId, version])
+  @@index([projectId, createdAt])
+}
+
+model ProjectFile {
+  id           String @id @default(cuid())
+  deploymentId String
+  path         String // normalized, no leading slash: "index.html", "assets/app.js"
+  size         Int
+  contentType  String
+  storageKey   String // s3 object key
+  hash         String? // sha256, for dedup/etag
+
+  deployment Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  @@unique([deploymentId, path])
+  @@index([deploymentId])
+}
+
+// ---------------------------------------------------------------------------
+// Sharing
+// ---------------------------------------------------------------------------
+
+model ShortLink {
+  id        String   @id @default(cuid())
+  code      String   @unique // /s/{code}
+  projectId String
+  targetPath String  @default("/")
+  clicks    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+enum DomainStatus {
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+model CustomDomain {
+  id                String       @id @default(cuid())
+  domain            String       @unique
+  projectId         String
+  userId            String
+  status            DomainStatus @default(PENDING)
+  verificationToken String
+  verifiedAt        DateTime?
+  createdAt         DateTime     @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+}
+
+// ---------------------------------------------------------------------------
+// Analytics (append-only; see docs/architecture.md for ClickHouse swap path)
+// ---------------------------------------------------------------------------
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  projectId String
+  type      String   @default("pageview") // pageview | download | file_view | heartbeat
+  path      String   @default("/")
+  visitorId String // sha256(dailySalt + ip + ua) — pseudonymous, 24h stable
+  referrer  String?
+  country   String?
+  device    String? // desktop | mobile | tablet
+  browser   String?
+  os        String?
+  duration  Int? // seconds on page (from heartbeat/unload beacon)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([projectId, visitorId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Lead generation
+// ---------------------------------------------------------------------------
+
+model Lead {
+  id        String   @id @default(cuid())
+  projectId String
+  email     String
+  name      String?
+  source    String   @default("gate") // gate | form
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, email])
+  @@index([projectId, createdAt])
+}
+
+model EmailIntegration {
+  id        String   @id @default(cuid())
+  userId    String
+  provider  String // "mailchimp" | "convertkit"
+  apiKey    String // encrypted at rest
+  listId    String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+}
+
+// ---------------------------------------------------------------------------
+// Feedback
+// ---------------------------------------------------------------------------
+
+model Comment {
+  id         String    @id @default(cuid())
+  projectId  String
+  parentId   String?
+  authorName String    @default("Anonymous")
+  authorEmail String?
+  body       String
+  path       String    @default("/") // page the comment was left on
+  quote      String? // highlighted text, if any
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  project Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("Replies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("Replies")
+
+  @@index([projectId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Developer platform
+// ---------------------------------------------------------------------------
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  keyHash    String    @unique // sha256 of full key
+  prefix     String // first 12 chars for display ("hty_ab12cd34…")
+  scopes     String[]  @default(["read", "write"])
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  userId    String
+  url       String
+  secret    String // HMAC signing secret
+  events    String[] @default(["project.deployed"])
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([userId])
+}
+
+model WebhookDelivery {
+  id         String   @id @default(cuid())
+  endpointId String
+  event      String
+  payload    Json
+  statusCode Int?
+  error      String?
+  attempts   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([endpointId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Billing
+// ---------------------------------------------------------------------------
+
+enum PlanTier {
+  FREE
+  PRO
+  BUSINESS
+}
+
+model Subscription {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  plan               PlanTier @default(FREE)
+  stripeCustomerId   String?  @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId      String?
+  status             String   @default("active") // active | past_due | canceled | trialing
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
