@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { unlockCookieName, unlockCookieValue } from "@/lib/security";
 import { config } from "@/lib/config";
+import { gateRedirectUrl } from "@/lib/serve/redirect";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { passwordGatePage } from "@/lib/serve/html";
 
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const res = NextResponse.redirect(new URL("/", req.url), 303);
+  const res = NextResponse.redirect(gateRedirectUrl(req), 303);
   res.cookies.set(unlockCookieName(projectId), unlockCookieValue(projectId, project.passwordVersion), {
     httpOnly: true,
     sameSite: "lax",

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { sign } from "@/lib/security";
 import { config } from "@/lib/config";
+import { gateRedirectUrl } from "@/lib/serve/redirect";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { forwardLead } from "@/lib/integrations";
 import { notify } from "@/lib/activity";
@@ -69,7 +70,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (isForm) {
-    const res = NextResponse.redirect(new URL("/", req.url), 303);
+    const res = NextResponse.redirect(gateRedirectUrl(req), 303);
     res.cookies.set(`hosty_lead_${project.id}`, sign(`lead:${project.id}`), {
       httpOnly: true,
       sameSite: "lax",

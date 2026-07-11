@@ -41,3 +41,8 @@ prisma/*.db
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# playwright
+test-results/
+playwright-report/
+tests/e2e/.auth/

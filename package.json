@@ -2,7 +2,7 @@
   "name": "hosty",
   "version": "1.0.0",
   "private": true,
-  "description": "Hosty — a modern static hosting platform. Upload a site, document or image and get a public URL in seconds.",
+  "description": "Hosty \u2014 a modern static hosting platform. Upload a site, document or image and get a public URL in seconds.",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -14,7 +14,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "db:seed": "prisma db seed",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -49,6 +50,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/adm-zip": "^0.5.5",
     "@types/bcryptjs": "^2.4.6",
     "@types/mime-types": "^2.1.4",
