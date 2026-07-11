@@ -1,0 +1,11 @@
+{
+  "name": "@hosty/cli",
+  "version": "1.0.0",
+  "description": "Deploy static sites, PDFs and documents to Hosty from the terminal or CI.",
+  "bin": { "hosty": "./bin/hosty.js" },
+  "type": "module",
+  "engines": { "node": ">=18.17.0" },
+  "dependencies": {
+    "adm-zip": "^0.5.12"
+  }
+}

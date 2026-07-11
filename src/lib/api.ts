@@ -53,6 +53,9 @@ export function apiHandler<Ctx = unknown>(
 }
 
 export function errorResponse(err: unknown): Response {
+  // Next.js signals "this route must be dynamic" by throwing during build-time
+  // static analysis — rethrow so the framework can handle it.
+  if ((err as { digest?: string })?.digest === "DYNAMIC_SERVER_USAGE") throw err;
   if (err instanceof ApiError) {
     return NextResponse.json({ error: err.message }, { status: err.status });
   }

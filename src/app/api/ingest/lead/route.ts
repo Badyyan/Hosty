@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { sign } from "@/lib/security";
+import { config } from "@/lib/config";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { forwardLead } from "@/lib/integrations";
 import { notify } from "@/lib/activity";
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
     res.cookies.set(`hosty_lead_${project.id}`, sign(`lead:${project.id}`), {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: config.appUrl.startsWith("https"),
       maxAge: 60 * 60 * 24 * 30,
       path: "/",
     });

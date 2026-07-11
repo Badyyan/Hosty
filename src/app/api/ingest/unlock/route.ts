@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { unlockCookieName, unlockCookieValue } from "@/lib/security";
+import { config } from "@/lib/config";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { passwordGatePage } from "@/lib/serve/html";
 
@@ -32,7 +33,9 @@ export async function POST(req: NextRequest) {
   res.cookies.set(unlockCookieName(projectId), unlockCookieValue(projectId, project.passwordVersion), {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // keyed to the deployed scheme, not NODE_ENV — a production build served
+    // over plain http (docker-compose localhost) must not set Secure cookies
+    secure: config.appUrl.startsWith("https"),
     maxAge: 60 * 60 * 24 * 7,
     path: "/",
   });
