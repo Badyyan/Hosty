@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "hosty",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": { "enabled": true },
+
+  // Non-secret runtime configuration. Secrets (DATABASE_URL, NEXTAUTH_SECRET,
+  // SIGNING_SECRET, S3_*, STRIPE_*, CRON_SECRET, SMTP_*) are set with
+  // `wrangler secret put <NAME>` — see docs/deploy-cloudflare.md.
+  "vars": {
+    "DB_ADAPTER": "pg",
+    "NEXT_PUBLIC_APP_URL": "https://hosty.example.workers.dev",
+    "NEXT_PUBLIC_ROOT_DOMAIN": "hosty.example.workers.dev",
+    "NEXTAUTH_URL": "https://hosty.example.workers.dev"
+  }
+
+  // Production extras (uncomment and adjust once you own the zone):
+  // "routes": [
+  //   { "pattern": "hosty.site/*", "zone_name": "hosty.site" },
+  //   { "pattern": "*.hosty.site/*", "zone_name": "hosty.site" }
+  // ],
+  // Hyperdrive (recommended Postgres pooling — create with `wrangler hyperdrive create`):
+  // "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<hyperdrive-id>" }]
+}

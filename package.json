@@ -2,7 +2,7 @@
   "name": "hosty",
   "version": "1.0.0",
   "private": true,
-  "description": "Hosty — a modern static hosting platform. Upload a site, document or image and get a public URL in seconds.",
+  "description": "Hosty \u2014 a modern static hosting platform. Upload a site, document or image and get a public URL in seconds.",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -15,7 +15,9 @@
     "prisma:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "preview:cf": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy:cf": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -29,6 +31,8 @@
     "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/lang-markdown": "^6.2.5",
     "@next-auth/prisma-adapter": "^1.0.7",
+    "@opennextjs/cloudflare": "^1.13.0",
+    "@prisma/adapter-pg": "^5.22.0",
     "@prisma/client": "^5.14.0",
     "@uiw/react-codemirror": "^4.22.1",
     "adm-zip": "^0.5.12",
@@ -43,6 +47,7 @@
     "next-auth": "^4.24.7",
     "nodemailer": "^7.0.7",
     "otplib": "^12.0.1",
+    "pg": "^8.22.0",
     "qrcode": "^1.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -58,6 +63,7 @@
     "@types/mime-types": "^2.1.4",
     "@types/node": "^20.12.12",
     "@types/nodemailer": "^7.0.0",
+    "@types/pg": "^8.20.0",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18.3.2",
     "@types/react-dom": "^18.3.0",
@@ -68,7 +74,8 @@
     "tailwindcss": "^3.4.3",
     "tsx": "^4.10.5",
     "typescript": "^5.4.5",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "wrangler": "^4.110.0"
   },
   "engines": {
     "node": ">=18.17.0"

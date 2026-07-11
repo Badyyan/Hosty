@@ -2,7 +2,10 @@
 // See docs/database.md for modeling rationale.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // driverAdapters lets the same client run on Cloudflare Workers via
+  // @prisma/adapter-pg (see src/lib/db.ts); Node deployments are unaffected.
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {

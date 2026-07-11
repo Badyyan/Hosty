@@ -18,7 +18,12 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   experimental: {
-    serverComponentsExternalPackages: ["adm-zip", "nodemailer"],
+    serverComponentsExternalPackages: [
+      "adm-zip",
+      "nodemailer",
+      "pg",
+      "@prisma/adapter-pg",
+    ],
   },
   async headers() {
     return [

@@ -1,5 +1,12 @@
 # Deployment & infrastructure
 
+Two supported production targets:
+
+1. **AWS + Cloudflare CDN** (below) — containers behind an ALB, Cloudflare in front.
+2. **Cloudflare Workers end-to-end** — serverless on Workers + R2 + Hyperdrive;
+   see [deploy-cloudflare.md](deploy-cloudflare.md). The Workers build is
+   verified in `workerd` by the repo's tooling (`npm run preview:cf`).
+
 ## Production topology (AWS + Cloudflare)
 
 | Layer | Service | Notes |

@@ -17,16 +17,19 @@ function signedHeaders(body: string) {
   return { "Stripe-Signature": `t=${t},v1=${v1}`, "Content-Type": "application/json" };
 }
 
+// unique per run — the DB persists across local runs and these columns are unique
+const RUN_ID = `${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
+
 function subscriptionEvent(userId: string, opts: { deleted?: boolean } = {}) {
   return JSON.stringify({
-    id: `evt_e2e_${Date.now()}`,
+    id: `evt_e2e_${RUN_ID}`,
     object: "event",
     type: opts.deleted ? "customer.subscription.deleted" : "customer.subscription.updated",
     data: {
       object: {
-        id: "sub_e2e_1",
+        id: `sub_e2e_${RUN_ID}`,
         object: "subscription",
-        customer: "cus_e2e_1",
+        customer: `cus_e2e_${RUN_ID}`,
         status: opts.deleted ? "canceled" : "active",
         current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400,
         metadata: { userId },
