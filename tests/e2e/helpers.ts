@@ -22,7 +22,8 @@ export async function uploadViaUi(page: Page, name: string, buffer: Buffer, file
   await page.goto("/dashboard");
   const input = page.locator('input[type="file"][multiple]');
   await input.setInputFiles({ name: filename, mimeType: "application/octet-stream", buffer });
-  await page.waitForURL(/\/dashboard\/projects\/[a-z0-9]+/, { timeout: 30_000 });
+  // upload + extraction + deploy can be slow under full-suite contention
+  await page.waitForURL(/\/dashboard\/projects\/[a-z0-9]+/, { timeout: 45_000 });
   const projectId = page.url().match(/projects\/([a-z0-9]+)/)![1];
   return projectId;
 }

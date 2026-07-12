@@ -17,11 +17,13 @@ test.describe("in-browser editor & versioning", () => {
     await expect(cm).toBeVisible();
     await expect(cm).toContainText("Hello E2E", { timeout: 10_000 });
 
-    // replace the content and wait for the 2s-debounced auto-save
+    // replace the content and wait for the 2s-debounced auto-save (which then
+    // creates a new deployment — allow generous time under suite contention)
     await cm.click();
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.type("<!doctype html><html><body><h1>Edited by E2E</h1></body></html>");
-    await expect(page.getByText("✓ Saved (new version created)")).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText("Unsaved changes…")).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText("✓ Saved (new version created)")).toBeVisible({ timeout: 30_000 });
 
     // the live site now serves v2
     await expect

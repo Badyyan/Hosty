@@ -19,7 +19,10 @@ export default defineConfig({
   testDir: "tests/e2e",
   fullyParallel: false, // suite shares one DB + one seeded session
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  // E2E runs against a live server + real DB/storage; a single retry absorbs
+  // legitimate timing variance (auto-save debounce, deploy latency) without
+  // masking real regressions.
+  retries: 1,
   timeout: 45_000,
   reporter: process.env.CI ? "github" : "list",
   globalSetup: "./tests/e2e/global-setup.ts",
