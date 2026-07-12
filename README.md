@@ -55,6 +55,15 @@ Open http://localhost:3000. Uploaded sites are served at
 `http://<slug>.localhost:3000` (Chrome resolves `*.localhost` automatically)
 and also path-based at `/sites/<slug>` for environments without wildcard DNS.
 
+## Deploy a live URL
+
+- **Vercel (fastest — only a free Postgres needed):** set `STORAGE_DRIVER=postgres`
+  and hosted files live in the database (no S3/R2/Redis). See
+  [docs/deploy-vercel.md](docs/deploy-vercel.md).
+- **Cloudflare Workers (recommended for production):** R2 + Hyperdrive, verified
+  end-to-end in `workerd`. See [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
+- **Docker (local):** `docker compose up` — full stack, seeded demo login.
+
 ## Documentation
 
 - [Architecture](docs/architecture.md) — high-level diagram, request flows, scaling

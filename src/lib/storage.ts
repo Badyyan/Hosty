@@ -11,13 +11,29 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import {
+  pgPut,
+  pgGet,
+  pgGetBytes,
+  pgHeadSize,
+  pgCopy,
+  pgDelete,
+  pgDeletePrefix,
+} from "./storage-pg";
+import { ApiError } from "./auth";
 
 /**
- * Object storage service. Works against AWS S3, Cloudflare R2 or MinIO
- * (docker-compose ships MinIO for local dev).
+ * Object storage service. Two drivers, selected by STORAGE_DRIVER:
+ *  - "s3" (default): AWS S3, Cloudflare R2 or MinIO.
+ *  - "postgres": file bytes in the DB — zero storage dependency, for demos and
+ *    self-contained deploys (no presigned multi-GB uploads). See storage-pg.ts.
  *
  * Layout: sites/{projectId}/{deploymentId}/{path} — immutable per deployment.
  */
+
+function usePg(): boolean {
+  return process.env.STORAGE_DRIVER === "postgres";
+}
 
 const globalForS3 = globalThis as unknown as { s3?: S3Client };
 const perRequestS3 = new WeakMap<object, S3Client>();
@@ -99,6 +115,9 @@ export async function putObject(
   body: Buffer | Uint8Array | string,
   contentType: string
 ): Promise<void> {
+  if (usePg()) {
+    return pgPut(key, Buffer.isBuffer(body) ? body : Buffer.from(body as Uint8Array), contentType);
+  }
   await s3().send(
     new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: contentType })
   );
@@ -127,6 +146,7 @@ export interface StoredObject {
 
 /** GET an object, with optional HTTP Range passthrough for large files/video. */
 export async function getObject(key: string, range?: string): Promise<StoredObject | null> {
+  if (usePg()) return pgGet(key, range);
   try {
     const res = await s3().send(
       new GetObjectCommand({ Bucket: BUCKET, Key: key, Range: range })
@@ -148,6 +168,7 @@ export async function getObject(key: string, range?: string): Promise<StoredObje
 
 /** Read an entire object as a Buffer (portable across Node/workerd). */
 export async function getObjectBytes(key: string): Promise<Buffer | null> {
+  if (usePg()) return pgGetBytes(key);
   const obj = await getObject(key);
   if (!obj) return null;
   return Buffer.from(await obj.body.transformToByteArray());
@@ -163,6 +184,7 @@ export async function getObjectBytes(key: string): Promise<Buffer | null> {
  * (bounded concurrency below).
  */
 export async function deletePrefix(prefix: string): Promise<number> {
+  if (usePg()) return pgDeletePrefix(prefix);
   let deleted = 0;
   let token: string | undefined;
   do {
@@ -185,6 +207,7 @@ export async function deletePrefix(prefix: string): Promise<number> {
 
 /** Object size in bytes, or null if it doesn't exist. */
 export async function headObjectSize(key: string): Promise<number | null> {
+  if (usePg()) return pgHeadSize(key);
   try {
     const res = await s3().send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
     return res.ContentLength ?? 0;
@@ -201,6 +224,7 @@ export async function headObjectSize(key: string): Promise<number | null> {
  * required — the per-file plan limits keep us under that today.
  */
 export async function copyObject(fromKey: string, toKey: string, contentType: string) {
+  if (usePg()) return pgCopy(fromKey, toKey, contentType);
   await s3().send(
     new CopyObjectCommand({
       Bucket: BUCKET,
@@ -213,6 +237,7 @@ export async function copyObject(fromKey: string, toKey: string, contentType: st
 }
 
 export async function deleteObject(key: string) {
+  if (usePg()) return pgDelete(key);
   await s3().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })).catch(() => {});
 }
 
@@ -221,6 +246,12 @@ export async function deleteObject(key: string) {
 // ---------------------------------------------------------------------------
 
 export async function createMultipartUpload(key: string, contentType: string) {
+  if (usePg()) {
+    throw new ApiError(
+      501,
+      "Large (multi-GB) uploads require object storage; this instance uses Postgres storage. Use the standard upload for smaller files."
+    );
+  }
   const res = await s3().send(
     new CreateMultipartUploadCommand({ Bucket: BUCKET, Key: key, ContentType: contentType })
   );

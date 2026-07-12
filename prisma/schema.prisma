@@ -6,6 +6,9 @@ generator client {
   // driverAdapters lets the same client run on Cloudflare Workers via
   // @prisma/adapter-pg (see src/lib/db.ts); Node deployments are unaffected.
   previewFeatures = ["driverAdapters"]
+  // Include serverless Linux engines so the client runs on Vercel/AWS Lambda
+  // in addition to local/dev (native) and Docker.
+  binaryTargets   = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -438,6 +441,21 @@ enum PlanTier {
   FREE
   PRO
   BUSINESS
+}
+
+// ---------------------------------------------------------------------------
+// Optional Postgres-backed object storage (STORAGE_DRIVER=postgres)
+// ---------------------------------------------------------------------------
+// A zero-dependency storage mode for demos/self-contained deploys: hosted
+// file bytes live in Postgres instead of S3/R2, so the app needs only a
+// database. For production scale use the S3 driver (default). See
+// src/lib/storage.ts.
+model StoredFile {
+  key         String   @id
+  data        Bytes
+  contentType String
+  size        Int
+  createdAt   DateTime @default(now())
 }
 
 model Subscription {

@@ -28,6 +28,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.rewrite(rewritten);
   }
 
+  // Path-serving mode (Vercel / *.workers.dev / no wildcard DNS): there are no
+  // wildcard subdomains or host-routed custom domains — hosted sites are
+  // reached at explicit /sites/<slug> paths, which the route handles directly.
+  // Skip all host-based rewriting so the app host is never mistaken for a site.
+  if (isPathServing()) return NextResponse.next();
+
   const appHost = getAppHost();
   const rootDomain = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000").toLowerCase();
 
@@ -50,6 +56,12 @@ export function middleware(req: NextRequest) {
   const rewritten = url.clone();
   rewritten.pathname = `/sites/@${host.split(":")[0]}${url.pathname}`;
   return NextResponse.rewrite(rewritten);
+}
+
+function isPathServing(): boolean {
+  if (process.env.PATH_SERVING === "0") return false;
+  if (process.env.PATH_SERVING === "1" || process.env.NEXT_PUBLIC_PATH_SERVING === "1") return true;
+  return Boolean(process.env.VERCEL);
 }
 
 function getAppHost(): string {
