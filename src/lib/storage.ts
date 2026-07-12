@@ -7,6 +7,9 @@ import {
   CreateMultipartUploadCommand,
   UploadPartCommand,
   CompleteMultipartUploadCommand,
+  HeadObjectCommand,
+  CopyObjectCommand,
+  DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Readable } from "stream";
@@ -101,6 +104,39 @@ export async function deletePrefix(prefix: string): Promise<number> {
     token = list.IsTruncated ? list.NextContinuationToken : undefined;
   } while (token);
   return deleted;
+}
+
+/** Object size in bytes, or null if it doesn't exist. */
+export async function headObjectSize(key: string): Promise<number | null> {
+  try {
+    const res = await s3().send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
+    return res.ContentLength ?? 0;
+  } catch (err: unknown) {
+    const name = (err as { name?: string })?.name;
+    if (name === "NotFound" || name === "NoSuchKey") return null;
+    throw err;
+  }
+}
+
+/**
+ * Server-side copy (staging → deployment prefix). S3 CopyObject supports
+ * objects up to 5 GB; beyond that multipart copy (UploadPartCopy) is
+ * required — the per-file plan limits keep us under that today.
+ */
+export async function copyObject(fromKey: string, toKey: string, contentType: string) {
+  await s3().send(
+    new CopyObjectCommand({
+      Bucket: BUCKET,
+      CopySource: encodeURIComponent(`${BUCKET}/${fromKey}`),
+      Key: toKey,
+      ContentType: contentType,
+      MetadataDirective: "REPLACE",
+    })
+  );
+}
+
+export async function deleteObject(key: string) {
+  await s3().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })).catch(() => {});
 }
 
 // ---------------------------------------------------------------------------

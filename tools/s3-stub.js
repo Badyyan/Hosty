@@ -30,6 +30,31 @@ const server = http.createServer((req, res) => {
 
   if (req.method === "PUT") {
     fs.mkdirSync(path.dirname(file), { recursive: true });
+    const q = new URLSearchParams(query);
+    if (q.get("uploadId") && q.get("partNumber")) {
+      const ws = fs.createWriteStream(`${file}.__mpu-${q.get("uploadId")}.part${q.get("partNumber")}`);
+      req.pipe(ws);
+      ws.on("finish", () => {
+        res.writeHead(200, { ETag: `"part-${q.get("partNumber")}"` });
+        res.end();
+      });
+      return;
+    }
+    // server-side copy (x-amz-copy-source: /bucket/key)
+    const copySource = req.headers["x-amz-copy-source"];
+    if (copySource) {
+      const src = keyToFile("/" + decodeURIComponent(String(copySource)).replace(/^\//, ""));
+      try {
+        fs.copyFileSync(src, file);
+        const meta = { contentType: req.headers["content-type"] || "application/octet-stream" };
+        fs.writeFileSync(file + ".meta", JSON.stringify(meta));
+        res.writeHead(200, { "Content-Type": "application/xml" });
+        return res.end('<?xml version="1.0"?><CopyObjectResult><ETag>"stub"</ETag></CopyObjectResult>');
+      } catch {
+        res.writeHead(404, { "Content-Type": "application/xml" });
+        return res.end('<?xml version="1.0"?><Error><Code>NoSuchKey</Code></Error>');
+      }
+    }
     const meta = { contentType: req.headers["content-type"] || "application/octet-stream" };
     const ws = fs.createWriteStream(file);
     req.pipe(ws);
@@ -61,6 +86,40 @@ const server = http.createServer((req, res) => {
         .map((k) => `<Contents><Key>${k}</Key></Contents>`)
         .join("")}</ListBucketResult>`
     );
+    return;
+  }
+
+  if (req.method === "POST" && new URLSearchParams(query).has("uploads")) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const uploadId = Math.random().toString(36).slice(2, 14);
+    const meta = { contentType: req.headers["content-type"] || "application/octet-stream" };
+    fs.writeFileSync(`${file}.__mpu-${uploadId}.meta`, JSON.stringify(meta));
+    res.writeHead(200, { "Content-Type": "application/xml" });
+    return res.end(`<?xml version="1.0"?><InitiateMultipartUploadResult><UploadId>${uploadId}</UploadId></InitiateMultipartUploadResult>`);
+  }
+
+  // multipart complete: POST ?uploadId=…
+  if (req.method === "POST" && new URLSearchParams(query).get("uploadId")) {
+    const uploadId = new URLSearchParams(query).get("uploadId");
+    let body = "";
+    req.on("data", (d) => (body += d));
+    req.on("end", () => {
+      const dir = path.dirname(file);
+      const base = path.basename(file);
+      const parts = fs
+        .readdirSync(dir)
+        .filter((f) => f.startsWith(`${base}.__mpu-${uploadId}.part`))
+        .sort((a, b) => Number(a.split(".part")[1]) - Number(b.split(".part")[1]));
+      const out = fs.createWriteStream(file);
+      for (const p of parts) out.write(fs.readFileSync(path.join(dir, p)));
+      out.end(() => {
+        const metaFile = `${file}.__mpu-${uploadId}.meta`;
+        fs.renameSync(metaFile, file + ".meta");
+        for (const p of parts) fs.unlinkSync(path.join(dir, p));
+        res.writeHead(200, { "Content-Type": "application/xml" });
+        res.end(`<?xml version="1.0"?><CompleteMultipartUploadResult><Key>${base}</Key></CompleteMultipartUploadResult>`);
+      });
+    });
     return;
   }
 

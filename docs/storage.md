@@ -20,7 +20,7 @@ hosty-sites/
 | Size | Path | Mechanism |
 | --- | --- | --- |
 | ≤ plan inline limit (100 MB) | `POST /api/upload` | Multipart form streamed through the app (validated, scanned, extracted) |
-| Multi-GB single files | `POST /api/upload/presign` | Server issues S3 multipart presigned URLs; browser uploads parts directly to S3; `POST /api/upload/complete` finalizes, validates size against quota, and registers the deployment |
+| Multi-GB single files | `POST /api/upload/presign` | Server issues S3 multipart presigned URLs; browser uploads parts directly to S3 (dropzone switches automatically above 80 MB); `POST /api/upload/complete` finalizes, re-validates the *actual* size against quota, and registers the deployment via **server-side copy** — bytes never pass through the app tier. Staging keys embed the uploader's id and can only be finalized by that account. Requires a CORS rule on the bucket allowing `PUT` from the app origin. ZIPs are excluded (extraction is the bounded inline path) |
 
 ZIP handling: entries are extracted with **zip-slip** path normalization,
 capped at 10,000 entries / 2 GB uncompressed / 512 MB per entry (zip-bomb

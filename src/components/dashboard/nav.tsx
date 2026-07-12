@@ -9,6 +9,7 @@ const links = [
   { href: "/dashboard", label: "Projects", icon: "📁" },
   { href: "/dashboard/domains", label: "Domains", icon: "🌍" },
   { href: "/dashboard/team", label: "Team", icon: "👥" },
+  { href: "/dashboard/activity", label: "Activity", icon: "📜" },
   { href: "/dashboard/keys", label: "API keys", icon: "🔑" },
   { href: "/dashboard/webhooks", label: "Webhooks", icon: "🪝" },
   { href: "/dashboard/billing", label: "Billing", icon: "💳" },

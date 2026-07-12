@@ -20,12 +20,77 @@ export function UploadDropzone({ projectId, onDone }: Props) {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState("");
   const [pasteMode, setPasteMode] = useState(false);
   const [html, setHtml] = useState("");
+
+  // Above this size a single file goes browser → S3 directly via presigned
+  // multipart URLs (requires CORS on the bucket; see docs/storage.md).
+  const LARGE_FILE_BYTES = 80 * 1024 * 1024;
+
+  const uploadLarge = useCallback(
+    async (file: File) => {
+      setBusy(true);
+      setError("");
+      try {
+        const presignRes = await fetch("/api/upload/presign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: file.name,
+            size: file.size,
+            parts: Math.max(1, Math.ceil(file.size / (64 * 1024 * 1024))),
+          }),
+        });
+        const presign = await presignRes.json();
+        if (!presignRes.ok) throw new Error(presign.error ?? "Could not start upload");
+
+        const parts: { ETag: string; PartNumber: number }[] = [];
+        for (let i = 0; i < presign.urls.length; i++) {
+          const chunk = file.slice(i * presign.partSize, (i + 1) * presign.partSize);
+          setProgress(`Uploading part ${i + 1}/${presign.urls.length}…`);
+          const partRes = await fetch(presign.urls[i], { method: "PUT", body: chunk });
+          if (!partRes.ok) throw new Error(`Part ${i + 1} failed (HTTP ${partRes.status})`);
+          parts.push({ ETag: partRes.headers.get("ETag") ?? `"part-${i + 1}"`, PartNumber: i + 1 });
+        }
+
+        setProgress("Finalizing…");
+        const completeRes = await fetch("/api/upload/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stagingKey: presign.stagingKey,
+            uploadId: presign.uploadId,
+            parts,
+            filename: file.name,
+            projectId,
+          }),
+        });
+        const data = await completeRes.json();
+        if (!completeRes.ok) throw new Error(data.error ?? "Upload failed");
+        onDone?.();
+        router.push(`/dashboard/projects/${data.project.id}?published=1`);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed");
+      } finally {
+        setBusy(false);
+        setProgress("");
+      }
+    },
+    [projectId, router, onDone]
+  );
 
   const upload = useCallback(
     async (files: File[]) => {
       if (files.length === 0) return;
+      if (
+        files.length === 1 &&
+        files[0].size > LARGE_FILE_BYTES &&
+        !files[0].name.toLowerCase().endsWith(".zip")
+      ) {
+        return uploadLarge(files[0]);
+      }
       setBusy(true);
       setError("");
       const form = new FormData();
@@ -48,7 +113,8 @@ export function UploadDropzone({ projectId, onDone }: Props) {
         setBusy(false);
       }
     },
-    [projectId, router, onDone]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [projectId, router, onDone, uploadLarge]
   );
 
   async function publishPastedHtml() {
@@ -135,7 +201,7 @@ export function UploadDropzone({ projectId, onDone }: Props) {
       />
       <div className="text-4xl">{busy ? "⏳" : "📤"}</div>
       <h3 className="mt-3 text-lg font-bold">
-        {busy ? "Uploading…" : projectId ? "Drop a new version" : "Drag & drop to publish"}
+        {busy ? progress || "Uploading…" : projectId ? "Drop a new version" : "Drag & drop to publish"}
       </h3>
       <p className="mt-1 text-sm text-slate-500">
         ZIP, HTML, PDF, images, Office docs, Markdown — instantly live with HTTPS

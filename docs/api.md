@@ -96,12 +96,13 @@ are visible in the dashboard.
 | Area | Routes |
 | --- | --- |
 | Auth | `POST /api/auth/register`, `POST /api/auth/forgot-password`, `POST /api/auth/reset-password`, NextAuth at `/api/auth/[...nextauth]`, `POST /api/auth/2fa/{setup,verify,disable}` |
-| Upload | `POST /api/upload` (multipart, ≤ plan limit), `POST /api/upload/presign` (multi-GB multipart S3), `POST /api/upload/paste` (raw HTML) |
+| Upload | `POST /api/upload` (multipart, ≤ plan limit), `POST /api/upload/presign` + `POST /api/upload/complete` (multi-GB browser→S3 multipart), `POST /api/upload/paste` (raw HTML) |
 | Projects | CRUD at `/api/projects[/:id]`, `/:id/files`, `/:id/files/content` (editor read/write), `/:id/versions` + `/:id/versions/:dpl/rollback`, `/:id/password`, `/:id/analytics`, `/:id/leads(.csv)`, `/:id/comments` |
 | Sharing | `POST /api/projects/:id/shortlink`, `GET /api/projects/:id/qrcode` |
 | Domains | `GET/POST /api/domains`, `POST /api/domains/:id/verify`, `DELETE /api/domains/:id` |
 | Teams | `GET/POST /api/teams`, `/api/teams/:id/members`, `/api/teams/:id/invites`, `POST /api/teams/invites/accept` |
 | Keys | `GET/POST/DELETE /api/keys[/:id]` |
+| Activity | `GET /api/activity` — account + team audit feed |
 | Webhooks | `GET/POST/DELETE /api/webhooks[/:id]` |
 | Billing | `POST /api/billing/checkout`, `POST /api/billing/portal`, `POST /api/stripe/webhook` (Stripe-signed) |
 | Public ingest | `POST /_hosty/event` (beacon), `POST /_hosty/lead`, `GET/POST /_hosty/comments`, `POST /_hosty/unlock` (password gate) — these run on hosted-site origins |
