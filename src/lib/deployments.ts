@@ -156,7 +156,7 @@ export async function deploy(input: DeployInput): Promise<DeployResult> {
     files: input.files.length,
     bytes: totalBytes,
   });
-  void logActivity({
+  await logActivity({
     userId: input.userId,
     teamId: project.teamId,
     action: isNew ? "project.created" : "project.deployed",
@@ -332,7 +332,7 @@ export async function deployStagedFile(input: {
     files: 1,
     bytes: size,
   });
-  void logActivity({
+  await logActivity({
     userId: input.userId,
     teamId: project.teamId,
     action: isNew ? "project.created" : "project.deployed",
@@ -357,7 +357,7 @@ export async function rollback(projectId: string, deploymentId: string, userId: 
   });
   const project = await db.project.findUniqueOrThrow({ where: { id: projectId } });
   await invalidateSiteCache(project.slug);
-  void logActivity({
+  await logActivity({
     userId,
     teamId: project.teamId,
     action: "project.rolledback",
@@ -403,7 +403,7 @@ export async function deleteProject(projectId: string, userId: string) {
   ]);
   await invalidateSiteCache(project.slug);
   void dispatchWebhooks(userId, "project.deleted", { projectId, slug: project.slug });
-  void logActivity({
+  await logActivity({
     userId,
     teamId: project.teamId,
     action: "project.deleted",

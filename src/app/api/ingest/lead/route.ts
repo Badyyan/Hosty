@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       projectId: project.id,
       projectName: project.name,
     });
-    void notify(project.userId, "lead", `New lead on ${project.name}`, {
+    await notify(project.userId, "lead", `New lead on ${project.name}`, {
       body: lead.email,
       href: `/dashboard/projects/${project.id}/leads`,
     });

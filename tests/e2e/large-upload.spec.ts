@@ -104,7 +104,9 @@ test.describe("activity feed", () => {
 
     await page.goto("/dashboard/activity");
     await expect(page.getByRole("heading", { name: "Activity" })).toBeVisible();
+    // the list renders after a client-side fetch to /api/activity — allow for
+    // slower responses on the workerd target
     await expect(page.getByText(/published a new project|deployed a new version/).first())
-      .toBeVisible();
+      .toBeVisible({ timeout: 15_000 });
   });
 });

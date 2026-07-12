@@ -1,6 +1,13 @@
 import { db } from "./db";
 
-/** Append-only audit trail shown on team dashboards. */
+/**
+ * Append-only audit trail shown on team dashboards.
+ *
+ * `await` this in request handlers (rather than fire-and-forget) so the write
+ * completes while the request's DB connection is still open — on Cloudflare
+ * Workers the per-request pool closes as soon as the response is sent. It's a
+ * single fast insert and never throws, so awaiting is cheap and safe.
+ */
 export async function logActivity(entry: {
   userId?: string | null;
   teamId?: string | null;

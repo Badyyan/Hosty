@@ -22,8 +22,10 @@ export async function uploadViaUi(page: Page, name: string, buffer: Buffer, file
   await page.goto("/dashboard");
   const input = page.locator('input[type="file"][multiple]');
   await input.setInputFiles({ name: filename, mimeType: "application/octet-stream", buffer });
-  // upload + extraction + deploy can be slow under full-suite contention
-  await page.waitForURL(/\/dashboard\/projects\/[a-z0-9]+/, { timeout: 45_000 });
+  // upload + extraction + deploy can be slow under full-suite contention;
+  // the workerd target (per-request client, no Hyperdrive) is slower still
+  const uploadTimeout = process.env.E2E_TARGET === "workerd" ? 90_000 : 45_000;
+  await page.waitForURL(/\/dashboard\/projects\/[a-z0-9]+/, { timeout: uploadTimeout });
   const projectId = page.url().match(/projects\/([a-z0-9]+)/)![1];
   return projectId;
 }

@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
       commentId: comment.id,
       author: comment.authorName,
     });
-    void notify(project.userId, "comment", `New comment on ${project.name}`, {
+    await notify(project.userId, "comment", `New comment on ${project.name}`, {
       body: comment.body.slice(0, 140),
       href: `/dashboard/projects/${project.id}/feedback`,
     });

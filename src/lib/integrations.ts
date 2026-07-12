@@ -6,7 +6,9 @@ import { dispatchWebhooks } from "./webhooks";
 /**
  * Lead forwarding: whenever a lead is captured we forward it to the owner's
  * connected email marketing tools (Mailchimp / ConvertKit) and fire the
- * `lead.captured` webhook. All forwarding is best-effort and async.
+ * `lead.captured` webhook. Best-effort; the caller awaits this so it completes
+ * while the request's DB connection is open (see docs/deploy-cloudflare.md for
+ * the Workers background-work note).
  */
 
 export async function forwardLead(

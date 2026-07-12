@@ -1,7 +1,8 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "hosty",
-  "main": ".open-next/worker.js",
+  // Custom entrypoint wraps the OpenNext handler to add the cron trigger.
+  "main": "cloudflare/worker.ts",
   "compatibility_date": "2026-07-01",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
@@ -9,6 +10,11 @@
     "binding": "ASSETS"
   },
   "observability": { "enabled": true },
+
+  // Native daily maintenance (analytics retention, storage reconciliation,
+  // cleanup) — the scheduled handler in cloudflare/worker.ts self-fetches
+  // /api/cron/daily with CRON_SECRET. Adjust the schedule as needed.
+  "triggers": { "crons": ["0 4 * * *"] },
 
   // Non-secret runtime configuration. Secrets (DATABASE_URL, NEXTAUTH_SECRET,
   // SIGNING_SECRET, S3_*, STRIPE_*, CRON_SECRET, SMTP_*) are set with

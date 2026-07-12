@@ -1,0 +1,13 @@
+[
+  {
+    "//": "CORS for the presigned multi-GB upload path (browser PUTs parts directly to R2). Replace the origins with your real app + preview domains, then apply: wrangler r2 bucket cors put hosty-sites --file cloudflare/r2-cors.json",
+    "AllowedOrigins": [
+      "https://hosty.example.workers.dev",
+      "https://app.hosty.site"
+    ],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["content-type", "content-length"],
+    "ExposeHeaders": ["etag"],
+    "MaxAgeSeconds": 3600
+  }
+]

@@ -20,7 +20,22 @@ function keyToFile(url) {
   return path.join(ROOT, ...safe);
 }
 
+// A local test stub must never crash the way a real service wouldn't — a
+// single bad request shouldn't take it down mid-suite. Guard every request
+// and add a process-level backstop.
+process.on("uncaughtException", (e) => console.error("s3-stub uncaught:", e.message));
+
 const server = http.createServer((req, res) => {
+  try {
+    handle(req, res);
+  } catch (e) {
+    console.error("s3-stub handler error:", e.message);
+    if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/xml" });
+    res.end('<?xml version="1.0"?><Error><Code>InternalError</Code></Error>');
+  }
+});
+
+function handle(req, res) {
   const [pathname, query = ""] = req.url.split("?");
   if (pathname === "/__health") {
     res.writeHead(200);
@@ -106,19 +121,37 @@ const server = http.createServer((req, res) => {
     req.on("end", () => {
       const dir = path.dirname(file);
       const base = path.basename(file);
-      const parts = fs
-        .readdirSync(dir)
-        .filter((f) => f.startsWith(`${base}.__mpu-${uploadId}.part`))
-        .sort((a, b) => Number(a.split(".part")[1]) - Number(b.split(".part")[1]));
-      const out = fs.createWriteStream(file);
-      for (const p of parts) out.write(fs.readFileSync(path.join(dir, p)));
-      out.end(() => {
+      const parts = fs.existsSync(dir)
+        ? fs
+            .readdirSync(dir)
+            .filter((f) => f.startsWith(`${base}.__mpu-${uploadId}.part`))
+            .sort((a, b) => Number(a.split(".part")[1]) - Number(b.split(".part")[1]))
+        : [];
+      // idempotent: if the object already exists (a prior complete), just ack
+      if (parts.length) {
+        const buf = Buffer.concat(parts.map((p) => fs.readFileSync(path.join(dir, p))));
+        fs.writeFileSync(file, buf);
         const metaFile = `${file}.__mpu-${uploadId}.meta`;
-        fs.renameSync(metaFile, file + ".meta");
-        for (const p of parts) fs.unlinkSync(path.join(dir, p));
-        res.writeHead(200, { "Content-Type": "application/xml" });
-        res.end(`<?xml version="1.0"?><CompleteMultipartUploadResult><Key>${base}</Key></CompleteMultipartUploadResult>`);
-      });
+        const meta = fs.existsSync(metaFile)
+          ? fs.readFileSync(metaFile, "utf8")
+          : JSON.stringify({ contentType: "application/octet-stream" });
+        fs.writeFileSync(file + ".meta", meta);
+        try {
+          fs.unlinkSync(metaFile);
+        } catch {}
+        for (const p of parts) {
+          try {
+            fs.unlinkSync(path.join(dir, p));
+          } catch {}
+        }
+      }
+      const bucket = pathname.split("/").filter(Boolean)[0] || "bucket";
+      const key = decodeURIComponent(pathname).split("/").slice(2).join("/");
+      // Spec-shaped result: Location, Bucket, Key, ETag — the SDK reads these.
+      res.writeHead(200, { "Content-Type": "application/xml" });
+      res.end(
+        `<?xml version="1.0" encoding="UTF-8"?><CompleteMultipartUploadResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Location>http://127.0.0.1:9100/${bucket}/${key}</Location><Bucket>${bucket}</Bucket><Key>${key}</Key><ETag>"stub-complete"</ETag></CompleteMultipartUploadResult>`
+      );
     });
     return;
   }
@@ -174,6 +207,6 @@ const server = http.createServer((req, res) => {
 
   res.writeHead(501);
   res.end();
-});
+}
 
 server.listen(PORT, () => console.log(`s3 stub on :${PORT}`));

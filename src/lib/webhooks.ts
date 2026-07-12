@@ -15,6 +15,12 @@ export type WebhookEvent =
   | "lead.captured"
   | "comment.created";
 
+/**
+ * Dispatch webhooks for an event. Best-effort and fire-and-forget: reliable on
+ * Node (long-lived client), but on Cloudflare Workers the per-request pool may
+ * close before delivery completes — front this with a durable queue there
+ * (Cloudflare Queues) for guaranteed delivery. See docs/deploy-cloudflare.md.
+ */
 export async function dispatchWebhooks(
   userId: string,
   event: WebhookEvent,

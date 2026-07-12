@@ -3,7 +3,7 @@ import { apiHandler, json } from "@/lib/api";
 import { requireUserId, ApiError } from "@/lib/auth";
 import { assertProjectAccess } from "@/lib/access";
 import { db } from "@/lib/db";
-import { getObject } from "@/lib/storage";
+import { getObjectBytes } from "@/lib/storage";
 import { deploy } from "@/lib/deployments";
 
 export const runtime = "nodejs";
@@ -28,11 +28,9 @@ export const GET = apiHandler<Ctx>(async (req, { params }) => {
     throw new ApiError(422, "This file can't be edited in the browser.");
   }
 
-  const object = await getObject(file.storageKey);
-  if (!object) throw new ApiError(404, "File content missing");
-  const chunks: Buffer[] = [];
-  for await (const chunk of object.body) chunks.push(Buffer.from(chunk));
-  return json({ path, content: Buffer.concat(chunks).toString("utf8") });
+  const bytes = await getObjectBytes(file.storageKey);
+  if (!bytes) throw new ApiError(404, "File content missing");
+  return json({ path, content: bytes.toString("utf8") });
 });
 
 const saveSchema = z.object({
@@ -63,11 +61,9 @@ export const PUT = apiHandler<Ctx>(async (req, { params }) => {
       if (f.path === input.path) {
         return { path: f.path, data: Buffer.from(input.content, "utf8") };
       }
-      const obj = await getObject(f.storageKey);
-      if (!obj) throw new ApiError(500, `Missing object for ${f.path}`);
-      const chunks: Buffer[] = [];
-      for await (const chunk of obj.body) chunks.push(Buffer.from(chunk));
-      return { path: f.path, data: Buffer.concat(chunks) };
+      const bytes = await getObjectBytes(f.storageKey);
+      if (!bytes) throw new ApiError(500, `Missing object for ${f.path}`);
+      return { path: f.path, data: bytes };
     })
   );
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { Readable } from "stream";
 import { resolveSite, resolveFile, type SiteMeta } from "@/lib/serve/resolve";
 import {
   injectIntoHtml,
@@ -108,7 +107,7 @@ export async function GET(
     // HTML gets the analytics beacon / widgets injected (and is never cached
     // at the edge, so re-deploys are instant).
     if (isHtml(contentType) && !wantsRaw) {
-      const text = await streamToString(object.body);
+      const text = await object.body.transformToString("utf-8");
       return new NextResponse(injectIntoHtml(text, site), { status: 200, headers });
     }
 
@@ -121,8 +120,12 @@ export async function GET(
     if (object.contentLength !== undefined && !object.contentRange) {
       headers.set("Content-Length", String(object.contentLength));
     }
-    const stream = Readable.toWeb(object.body) as unknown as ReadableStream;
-    return new NextResponse(stream, { status: object.statusCode, headers });
+    // transformToWebStream() yields a web ReadableStream on both Node and
+    // workerd — never assume a Node Readable here.
+    return new NextResponse(object.body.transformToWebStream(), {
+      status: object.statusCode,
+      headers,
+    });
   } catch (err) {
     reportError(err, { site: params.site });
     return html("<h1>Something went wrong</h1>", 500);
@@ -169,8 +172,3 @@ async function track(req: NextRequest, site: SiteMeta, type: "file_view" | "down
   }
 }
 
-async function streamToString(stream: Readable): Promise<string> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-  return Buffer.concat(chunks).toString("utf8");
-}
